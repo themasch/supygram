@@ -1,0 +1,3 @@
+[submodule "pytg"]
+	path = pytg
+	url = git@github.com:themasch/python-telegram.git
