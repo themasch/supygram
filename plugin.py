@@ -33,6 +33,7 @@ from supybot.commands import *
 import supybot.plugins as plugins
 import supybot.ircutils as ircutils
 import supybot.callbacks as callbacks
+import supybot.ircmsgs as ircmsgs
 import supybot.log as log
 from threading import Thread
 from pytg.Connection import TelegramConnection
@@ -60,19 +61,20 @@ class Telegram(callbacks.Plugin):
     def __init__(self, irc):
         callbacks.Plugin.__init__(self, irc)
         self.irc = irc
-        self.connection = TelegramConnection("localhost", 9000)
+        self.connection = TelegramConnection("localhost", 9012)
         self.thread = Thread(target=start_client, args=(self.connection, ))
         self.thread.start()
         self.connection.start_main_session()
-        self.connection.msg("Church of Root", "bot connected. weilerskann.jpg!")
+        self.connection.on_message(self.publish_msg)
 
     def die(self):
-        print "closing connection..."
         self.connection.close()
-        print "closed, joining..."
         self.thread.join()
-        print "joined."
         callbacks.Plugin.die(self)
+
+    def publish_msg(self, msg):
+        text = "<{0}> {1}".format(msg.sender, msg.message)
+        self.irc.queueMsg(ircmsgs.privmsg("#maschbotdev", text))
 
     def teg(self, irc, msg, args):
         self.connection.msg("Church of Root", msg.nick + ": " + stripCommand(msg.args[1]))
