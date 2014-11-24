@@ -41,6 +41,11 @@ def configure(advanced):
 
 
 Telegram = conf.registerPlugin('Telegram')
+conf.registerChannelValue(
+    Telegram,
+    'group',
+    registry.String("", "Target group connected to this channel")
+)
 # This is where your configuration variables (if any) should go.  For example:
 # conf.registerGlobalValue(Telegram, 'someConfigVariableName',
 #     registry.Boolean(False, """Help for someConfigVariableName."""))

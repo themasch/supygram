@@ -74,10 +74,16 @@ class Telegram(callbacks.Plugin):
 
     def publish_msg(self, msg):
         text = "<{0}> {1}".format(msg.sender, msg.message)
-        self.irc.queueMsg(ircmsgs.privmsg("#maschbotdev", text))
+        for (channel, c) in self.irc.state.channels.iteritems():
+            if msg.channel == self.registryValue('group', channel):
+                self.irc.queueMsg(ircmsgs.privmsg(channel, text))
 
-    def teg(self, irc, msg, args):
-        self.connection.msg("Church of Root", msg.nick + ": " + stripCommand(msg.args[1]))
+    def t(self, irc, msg, args):
+        if msg.command == 'PRIVMSG' and ircutils.isChannel(msg.args[0]):
+            if self.registryValue('group', msg.args[0]):
+                channel = self.registryValue('group', msg.args[0])
+                text = "{0}: {1}".format(msg.nick, stripCommand(msg.args[1]))
+                self.connection.msg(channel, text)
 
 
 Class = Telegram
