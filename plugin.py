@@ -37,7 +37,13 @@ import supybot.ircmsgs as ircmsgs
 import supybot.log as log
 from threading import Thread
 from pytg.Connection import TelegramConnection
-
+import sys
+import shutil
+import hashlib
+import inspect
+import os
+import stat
+import ConfigParser
 
 def stripCommand(str):
     if len(str) == 0:
@@ -53,7 +59,7 @@ def start_client(connection):
     connection.loop()
 
 
-class Telegram(callbacks.Plugin):
+class Supygram(callbacks.Plugin):
     """Add the help for "@plugin help Telegram" here
     This should describe *how* to use this plugin."""
     threaded = True
@@ -66,17 +72,37 @@ class Telegram(callbacks.Plugin):
         self.thread.start()
         self.connection.start_main_session()
         self.connection.on_message(self.publish_msg)
+        self.connection.on_picture(self.publish_picture)
+        self.ignoreList = []
+        self.lastPictureSender = False
+        self.config = ConfigParser.RawConfigParser()
+        self.config.read(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "/supygram.conf")
+        self.ignoreList.append(self.config.get("global", "bot_nick"))
+
 
     def die(self):
         self.connection.close()
         self.thread.join()
         callbacks.Plugin.die(self)
+        del sys.modules['supygram.pytg.Connection']
+        del sys.modules['supygram.pytg.Message']
 
+    def publish_picture(self, path):
+        filename = hashlib.md5(open(path, 'rb').read()).hexdigest() + ".jpg"
+        dst = self.config.get("global", "pic_dir") + filename
+        shutil.move(path, dst)
+        os.chmod(dst, stat.S_IROTH)
+        self.irc.queueMsg(ircmsgs.privmsg(self.config.get("global", "channel"), self.lastPictureSender + ": " + self.config.get("global", "url_prefix") + filename))
+         
     def publish_msg(self, msg):
         text = "<{0}> {1}".format(msg.sender, msg.message)
-        for (channel, c) in self.irc.state.channels.iteritems():
-            if msg.channel == self.registryValue('group', channel):
-                self.irc.queueMsg(ircmsgs.privmsg(channel, text))
+        print "incoming message"
+        if msg.sender not in self.ignoreList:
+            if msg.message == "[photo]":
+                self.connection.load_photo(msg.msgid)
+                self.lastPictureSender = msg.sender
+            else:
+                self.irc.queueMsg(ircmsgs.privmsg(self.config.get("global", "channel"), text))
 
     def t(self, irc, msg, args):
         if msg.command == 'PRIVMSG' and ircutils.isChannel(msg.args[0]):
@@ -84,9 +110,9 @@ class Telegram(callbacks.Plugin):
                 channel = self.registryValue('group', msg.args[0])
                 text = "{0}: {1}".format(msg.nick, stripCommand(msg.args[1]))
                 self.connection.msg(channel, text)
+        
 
-
-Class = Telegram
+Class = Supygram 
 
 
 # vim:set shiftwidth=4 softtabstop=4 expandtab textwidth=79:

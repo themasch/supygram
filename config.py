@@ -37,12 +37,12 @@ def configure(advanced):
     # user or not.  You should effect your configuration by manipulating the
     # registry as appropriate.
     from supybot.questions import expect, anything, something, yn
-    conf.registerPlugin('Telegram', True)
+    conf.registerPlugin('Supygram', True)
 
 
-Telegram = conf.registerPlugin('Telegram')
+Supygram = conf.registerPlugin('Supygram')
 conf.registerChannelValue(
-    Telegram,
+    Supygram,
     'group',
     registry.String("", "Target group connected to this channel")
 )
