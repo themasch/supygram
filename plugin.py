@@ -73,8 +73,11 @@ class Supygram(callbacks.Plugin):
         self.connection.start_main_session()
         self.connection.on_message(self.publish_msg)
         self.connection.on_picture(self.publish_picture)
+        self.connection.on_audio(self.publish_audio)
+        self.connection.on_video(self.publish_video)
         self.ignoreList = []
-        self.lastPictureSender = False
+        self.lastMediaSender = False
+        self.lastMediaType = ""
         self.config = ConfigParser.RawConfigParser()
         self.config.read(os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))) + "/supygram.conf")
         self.ignoreList.append(self.config.get("global", "bot_nick"))
@@ -87,12 +90,22 @@ class Supygram(callbacks.Plugin):
         del sys.modules['supygram.pytg.Connection']
         del sys.modules['supygram.pytg.Message']
 
+    def publish_video(self, path):
+        self.publish_media(path, "mp4")
+
     def publish_picture(self, path):
-        filename = hashlib.md5(open(path, 'rb').read()).hexdigest() + ".jpg"
+        self.publish_media(path, "jpg")
+    
+    def publish_audio(self, path):
+        self.publish_media(path, "ogg")
+
+
+    def publish_media(self, path, suffix):
+        filename = hashlib.md5(open(path, 'rb').read()).hexdigest() + "." + suffix
         dst = self.config.get("global", "pic_dir") + filename
         shutil.move(path, dst)
         os.chmod(dst, stat.S_IROTH)
-        self.irc.queueMsg(ircmsgs.privmsg(self.config.get("global", "channel"), self.lastPictureSender + ": " + self.config.get("global", "url_prefix") + filename))
+        self.irc.queueMsg(ircmsgs.privmsg(self.config.get("global", "channel"), self.lastMediaSender+ ": " + self.config.get("global", "url_prefix") + filename))
          
     def publish_msg(self, msg):
         text = "<{0}> {1}".format(msg.sender, msg.message)
@@ -100,11 +113,21 @@ class Supygram(callbacks.Plugin):
         if msg.sender not in self.ignoreList:
             if msg.message == "[photo]":
                 self.connection.load_photo(msg.msgid)
-                self.lastPictureSender = msg.sender
+                self.lastMediaSender = msg.sender
+            elif msg.message == "[video: type video/mp4]":
+                self.connection.load_video(msg.msgid)
+                self.lastMediaSender = msg.sender
+            elif msg.message == "[audio: type audio/ogg]":
+                self.connection.load_audio(msg.msgid)
+                self.lastMediaSender = msg.sender
             else:
                 self.irc.queueMsg(ircmsgs.privmsg(self.config.get("global", "channel"), text))
 
     def t(self, irc, msg, args):
+
+        print "asd"
+        print self.registryValue('group', msg.args[0])
+        print "fas"
         if msg.command == 'PRIVMSG' and ircutils.isChannel(msg.args[0]):
             if self.registryValue('group', msg.args[0]):
                 channel = self.registryValue('group', msg.args[0])
